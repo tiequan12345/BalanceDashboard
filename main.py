@@ -112,9 +112,7 @@ def main():
         st.info("Add Bitcoin addresses using the sidebar to start tracking balances.")
     else:
         # Fetch and display account data
-        logging.info("Fetching account data")
         account_data = update_accounts_data(st.session_state.accounts)
-        logging.info(f"Fetched account data: {account_data}")
         
         if account_data:
             df = pd.DataFrame(account_data)
@@ -126,88 +124,43 @@ def main():
                 balance = data['balance']
                 st.session_state.balance_history[address].append((current_time, balance))
             
-            logging.info(f"Updated balance history: {st.session_state.balance_history}")
-            
             # Display data in a table
             st.subheader("Account Balances")
             st.dataframe(df.style.format({'balance': '{:.8f}'}), width=800)
 
-            # Create a bar chart of account balances
-            logging.info("Creating bar chart")
-            fig_bar = px.bar(df, x='address', y='balance', title="Account Balance Distribution")
-            fig_bar.update_layout(xaxis_title="Bitcoin Address", yaxis_title="Balance (BTC)")
-            st.plotly_chart(fig_bar, use_container_width=True)
-            logging.info("Bar chart created and displayed")
+            # Create and display charts
+            display_charts(df)
 
-            # Create a line chart of balance changes over time
-            logging.info("Creating line chart")
-            fig_line = go.Figure()
-            for address in st.session_state.balance_history:
-                history = st.session_state.balance_history[address]
-                if history:
-                    times, balances = zip(*history)
-                    fig_line.add_trace(go.Scatter(x=times, y=balances, mode='lines+markers', name=address))
-            
-            fig_line.update_layout(
-                title="Balance Changes Over Time",
-                xaxis_title="Time",
-                yaxis_title="Balance (BTC)",
-                legend_title="Bitcoin Address"
-            )
-            st.plotly_chart(fig_line, use_container_width=True)
-            logging.info("Line chart created and displayed")
+    # Add a button to manually refresh data
+    if st.button("Refresh Data"):
+        st.rerun()
 
-        # Add a placeholder for refreshing data
-        placeholder = st.empty()
+    # Schedule the next update
+    st.empty()
+    time.sleep(REFRESH_INTERVAL)
+    st.rerun()
 
-        # Refresh data every 30 seconds
-        refresh_counter = 0
-        while True:
-            time.sleep(1)
-            refresh_counter += 1
-            
-            if refresh_counter >= REFRESH_INTERVAL:
-                logging.info("Refreshing data")
-                account_data = update_accounts_data(st.session_state.accounts)
-                if account_data:
-                    df = pd.DataFrame(account_data)
-                    current_time = datetime.now()
-                    for data in account_data:
-                        address = data['address']
-                        balance = data['balance']
-                        st.session_state.balance_history[address].append((current_time, balance))
-                    
-                    logging.info(f"Refreshed balance history: {st.session_state.balance_history}")
-                    
-                    with placeholder.container():
-                        st.dataframe(df.style.format({'balance': '{:.8f}'}), width=800)
-                        logging.info("Updating bar chart")
-                        fig_bar = px.bar(df, x='address', y='balance', title="Account Balance Distribution")
-                        fig_bar.update_layout(xaxis_title="Bitcoin Address", yaxis_title="Balance (BTC)")
-                        st.plotly_chart(fig_bar, use_container_width=True)
-                        logging.info("Bar chart updated")
-                        
-                        logging.info("Updating line chart")
-                        fig_line = go.Figure()
-                        for address in st.session_state.balance_history:
-                            history = st.session_state.balance_history[address]
-                            if history:
-                                times, balances = zip(*history)
-                                fig_line.add_trace(go.Scatter(x=times, y=balances, mode='lines+markers', name=address))
-                        
-                        fig_line.update_layout(
-                            title="Balance Changes Over Time",
-                            xaxis_title="Time",
-                            yaxis_title="Balance (BTC)",
-                            legend_title="Bitcoin Address"
-                        )
-                        st.plotly_chart(fig_line, use_container_width=True)
-                        logging.info("Line chart updated")
-                
-                refresh_counter = 0
-            
-            # Update the refresh countdown
-            placeholder.text(f"Next refresh in {REFRESH_INTERVAL - refresh_counter} seconds")
+def display_charts(df):
+    # Create a bar chart of account balances
+    fig_bar = px.bar(df, x='address', y='balance', title="Account Balance Distribution")
+    fig_bar.update_layout(xaxis_title="Bitcoin Address", yaxis_title="Balance (BTC)")
+    st.plotly_chart(fig_bar, use_container_width=True)
+
+    # Create a line chart of balance changes over time
+    fig_line = go.Figure()
+    for address in st.session_state.balance_history:
+        history = st.session_state.balance_history[address]
+        if history:
+            times, balances = zip(*history)
+            fig_line.add_trace(go.Scatter(x=times, y=balances, mode='lines+markers', name=address))
+    
+    fig_line.update_layout(
+        title="Balance Changes Over Time",
+        xaxis_title="Time",
+        yaxis_title="Balance (BTC)",
+        legend_title="Bitcoin Address"
+    )
+    st.plotly_chart(fig_line, use_container_width=True)
 
 if __name__ == "__main__":
     main()
